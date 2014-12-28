@@ -49,6 +49,21 @@ def data2int(data):
     return int(data.encode('hex'),16)
 
 
+def int2data(int1, padded=0):
+    """
+    Converts integer into hex data.
+    int1 = integer to convert into data
+    padded = number of bytes necessary. Will pad msb with 0 bytes. If 0, no padding.
+    """
+    if type(padded) is not int:
+        return None
+    padstr = '' if padded <= 0 else '0' + str(padded*2)
+    formatstr = '%' + padstr + 'x'
+    hexstr = (formatstr % int1)
+    if len(hexstr) % 2 == 1: hexstr = '0' + hexstr
+    return hexstr.decode('hex')
+
+
 def lines(num):
     """ If Python >3.0 must use print()... TODO """
     for i in range(num):
@@ -209,19 +224,19 @@ def seed2accid(seed, acc=1, subacc=1):
     seq = 0
     for i in range(acc):
         if i != 0: seq += 1
-        fpgsec = hSHA512(dseed[1:] + ('%08x' % seq).decode('hex'))
+        fpgsec = hSHA512(dseed[1:] + int2data(seq, 4))
         while data2int(fpgsec) >= curve_order or data2int(fpgsec) <= 1:
             seq += 1
-            fpgsec = hSHA512(dseed[1:] + ('%08x' % seq).decode('hex'))
+            fpgsec = hSHA512(dseed[1:] + int2data(seq, 4))
     fpgpt = get_point(fpgsec)
     fpgpub = get_pubkey(fpgpt) # Family Pubkey
     subseq = 0
     for i in range(subacc):
         if i != 0: subseq += 1
-        idxsec = hSHA512(fpgpub + ('%08x' % seq).decode('hex') + ('%08x' % subseq).decode('hex'))
+        idxsec = hSHA512(fpgpub + int2data(seq, 4) + int2data(subseq, 4))
         while data2int(idxsec) >= curve_order or data2int(idxsec) <= 1:
             subseq += 1
-            idxsec = hSHA512(fpgpub + ('%08x' % seq).decode('hex') + ('%08x' % subseq).decode('hex'))
+            idxsec = hSHA512(fpgpub + int2data(seq, 4) + int2data(subseq, 4))
     idxpt = get_point(idxsec)
     accpt = fpgpt + idxpt
     accpub = get_pubkey(accpt) # Account Pubkey
@@ -243,20 +258,34 @@ def genb58seed(entropy=None):
     ##       to include your own entropy in addition.
     """
     if entropy == None:
-        entropy = ('%032x' % ecdsa.util.randrange( 2**128 )).decode('hex')
+        entropy = int2data(ecdsa.util.randrange( 2**128 ), 16)
     else:
-        entropy = hashlib.sha256(entropy + ('%032x' % ecdsa.util.randrange( 2**128 )).decode('hex')).digest()[:16]
+        entropy = hashlib.sha256(entropy + int2data(ecdsa.util.randrange( 2**128 ), 16)).digest()[:16]
     b58seed = data_to_address(entropy, 33)
     return b58seed
+
+
+def testrun():
+    """ Tests a known set of addresses. https://wiki.ripple.com/Account_Family#Test_Vectors """
+    seed = 'shHM53KPZ87Gwdqarm1bAmPeXg8Tn'
+    fpgadd, accadd, accid = seed2accid(seed)
+    assert fpgadd == 'fht5yrLWh3P8DrJgQuVNDPQVXGTMyPpgRHFKGQzFQ66o3ssesk3o', 'Incorrect Family Public Generator'
+    assert accadd == 'aBRoQibi2jpDofohooFuzZi9nEzKw9Zdfc4ExVNmuXHaJpSPh8uJ', 'Incorrect Account Public Key'
+    assert accid == 'rhcfR9Cg98qCxHpCcPBmMonbDBXo84wyTn', 'Incorrect Account ID'
+    print 'TESTS OK'
 
 
 ############## SCRIPT STARTS HERE ###############
 
 
+lines(2)
+
+testrun()
+
 seed = genb58seed(str(time.clock()) + 'sdf86g98sghghf487fhhrughse78gg31se85g58s6e468g].gh.:;e.sg.]..814*/-+')
 fpgadd, accadd, accid = seed2accid(seed)
 
-lines(3)
+lines(2)
 
 print 'Family Seed (aka Secret):'
 print seed
