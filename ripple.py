@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: shift-jis -*-
 """
 This script was slapped together very quickly, but just for good measure,
 it is licensed under MIT license
@@ -246,6 +248,16 @@ def seed2accid(seed, acc=1, subacc=1):
     accadd = data_to_address(accpub, 35) # Account Public Key
     accid = data_to_address(acc160) # Account ID (similar to address in Bitcoin)
     
+    print u'Family Public Generatorの生成：'
+    print u'Family Seedの16バイトの乱数と4バイトの索引をくっ付ける： ' + (dseed[1:] + int2data(seq, 4)).encode('hex')
+    print u'上記の索引はFamilyを複数生成するためのもの。現在はFamily # 0 しか使われていないそうだ。'
+    print u'そのSHA512を取り、MSBの32バイトのみ使用する。'
+    print u'これを楕円曲線の掛け数にして: ' + fpgsec.encode('hex') + ' * G = ' + fpgpub.encode('hex')
+    print u'そこから得られた点をpubkeyにしてb58checkencode。ヘッダが41(16進:29): ' + fpgadd
+    print u''
+    print u''
+    print u''
+    
     return fpgadd, accadd, accid
 
 
@@ -261,7 +273,14 @@ def genb58seed(entropy=None):
         entropy = int2data(ecdsa.util.randrange( 2**128 ), 16)
     else:
         entropy = hashlib.sha256(entropy + int2data(ecdsa.util.randrange( 2**128 ), 16)).digest()[:16]
+    print
+    print u'Family Seedの生成：'
+    print u'     先ずは16バイトの乱数を取る：   ' + entropy.encode('hex')
+    print u'ヘッダバイト33(16進:21)を付ける： ' + '21' + entropy.encode('hex')
+    print u'   二回SHA256でCHECKSUMを付ける： ' + '21' + entropy.encode('hex') + Hash(chr(33) + entropy)[:4].encode('hex')
     b58seed = data_to_address(entropy, 33)
+    print u' それをRipple特有のbase58で変換： ' + b58seed
+    print
     return b58seed
 
 
